@@ -5,6 +5,7 @@
 
   var active = document.getElementById("licence-done-active");
   var expired = document.getElementById("licence-done-expired");
+  var tokenSpent = document.getElementById("licence-done-token-spent");
   var pending = document.getElementById("licence-done-pending");
 
   function show(el) {
@@ -17,10 +18,16 @@
     el.classList.add("hidden");
   }
 
-  if (status === "expired") {
+  function showOnly(el) {
     hide(pending);
     hide(active);
-    show(expired);
+    hide(expired);
+    hide(tokenSpent);
+    show(el);
+  }
+
+  if (status === "expired") {
+    showOnly(expired);
     return;
   }
 
@@ -28,8 +35,7 @@
     return;
   }
 
-  hide(pending);
-  show(active);
+  showOnly(active);
 
   var bodyEl = document.getElementById("licence-body");
   var toggle = document.getElementById("licence-toggle");
@@ -67,9 +73,8 @@
   })
     .then(function (res) {
       if (res.status === 410 || res.status === 403) {
-        hide(active);
-        show(expired);
-        throw new Error("expired");
+        showOnly(tokenSpent);
+        throw new Error("token_spent");
       }
       if (!res.ok) {
         throw new Error("fetch_failed");
@@ -81,17 +86,14 @@
       renderLicence();
     })
     .catch(function (err) {
-      if (err && err.message === "expired") return;
-      if (pending) {
-        hide(active);
-        show(pending);
-        var heading = pending.querySelector("h1");
-        var blurb = pending.querySelector("p");
-        if (heading) heading.textContent = "Could not load licence file";
-        if (blurb) {
-          blurb.innerHTML =
-            'Try again to <a class="text-[#7C87F7] hover:underline" href="https://licence.backbonehq.io/oauth/github/start">Continue with GitHub</a>.';
-        }
+      if (err && err.message === "token_spent") return;
+      showOnly(pending);
+      var heading = pending.querySelector("h1");
+      var blurb = pending.querySelector("p");
+      if (heading) heading.textContent = "Could not load licence file";
+      if (blurb) {
+        blurb.innerHTML =
+          'Try again to <a class="text-[#7C87F7] hover:underline" href="https://licence.backbonehq.io/oauth/github/start">Continue with GitHub</a>.';
       }
     });
 

@@ -42,7 +42,7 @@ const result = await new PurgeCSS().purge({
   defaultExtractor: tailwindishExtractor,
   safelist: {
     standard: [/^aos-/, /^js-/, /^turbo-/, /^svg-/, /^stimulus-/, /^theme-/],
-    deep: [/^\[.*\]$/],
+    deep: [/^\[.*\]$/, /autofill/],
     greedy: [/:[a-z-]+$/],
   },
 });

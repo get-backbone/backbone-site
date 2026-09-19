@@ -103,63 +103,72 @@
 
         <section id="licence-done-expired" class="max-w-[640px] hidden" style="text-wrap: pretty">
           <h1 class="font-helveticaDisplay text-white font-bold text-[40px] leading-[110%]">
-            Your Community licence has expired
+            Your licence has expired
           </h1>
           <p class="mt-4 text-neutral-200 text-lg leading-[145%]">
-            Community is a one-year developer grant.<br />
-            If you are still building and need more time — or are ready to go commercial — tell us where you are.
+            If you are still building after a year and need more time,<br />
+            please tell us where you are at.
           </p>
 
           <form
             id="backbone-community-expired-formspree"
-            action="https://formspree.io/f/REPLACE_ME"
+            action="https://formspree.io/f/myezkkav"
             method="POST"
-            class="mt-8 space-y-4 max-w-[480px]">
+            class="mt-8 flex flex-col gap-6 max-w-[324px]">
             <input type="hidden" name="_subject" value="Community licence expired" />
-            <div>
-              <label class="block text-13 text-neutral-300 mb-1.5" for="expired-email">Work email</label>
-              <input
-                id="expired-email"
-                type="email"
-                name="email"
-                required
-                autocomplete="email"
-                placeholder="karen.d@example.net"
-                class="appearance-none w-full px-4 border rounded-lg text-white h-[48px] border-[#727DA1]/20 bg-[#727DA1]/10 placeholder:text-neutral-400" />
-            </div>
-            <div>
-              <label class="block text-13 text-neutral-300 mb-1.5" for="expired-github">GitHub username</label>
-              <input
-                id="expired-github"
-                type="text"
-                name="github"
-                autocomplete="username"
-                placeholder="octocat"
-                class="appearance-none w-full px-4 border rounded-lg text-white h-[48px] border-[#727DA1]/20 bg-[#727DA1]/10 placeholder:text-neutral-400" />
-            </div>
-            <div>
-              <label class="block text-13 text-neutral-300 mb-1.5" for="expired-message">What are you building?</label>
-              <textarea
-                id="expired-message"
-                name="message"
-                rows="4"
-                placeholder="A sentence or two on your product and timeline"
-                class="appearance-none w-full px-4 py-3 border rounded-lg text-white border-[#727DA1]/20 bg-[#727DA1]/10 placeholder:text-neutral-400"></textarea>
-            </div>
-            <button type="submit" class="cta-button rounded-lg px-6 py-3 text-sm font-medium text-white">
-              Contact us
+            <input
+              id="expired-email"
+              type="email"
+              name="email"
+              required
+              autocomplete="email"
+              data-1p-ignore=""
+              placeholder="Your work e-mail"
+              class="appearance-none px-5 border rounded-lg backdrop-blur-2xl text-white h-[52px] w-full max-w-[316px] sm:max-w-full sm:w-[324px] border-[#727DA1]/20 bg-[#727DA1]/10 placeholder:text-neutral-300" />
+            <input
+              id="expired-github"
+              type="text"
+              name="github"
+              autocomplete="username"
+              placeholder="GitHub username"
+              class="appearance-none px-5 border rounded-lg backdrop-blur-2xl text-white h-[52px] w-full max-w-[316px] sm:max-w-full sm:w-[324px] border-[#727DA1]/20 bg-[#727DA1]/10 placeholder:text-neutral-300" />
+            <textarea
+              id="expired-message"
+              name="message"
+              placeholder="What are you building?
+Do you have a launch window?"
+              class="appearance-none px-5 border rounded-lg backdrop-blur-2xl text-white w-full max-w-[316px] sm:max-w-full sm:w-[324px] border-[#727DA1]/20 bg-[#727DA1]/10 placeholder:text-neutral-300"
+              style="font: inherit; letter-spacing: inherit; height: 104px; resize: none; padding-top: 14px; padding-bottom: 14px;"></textarea>
+            <button
+              type="submit"
+              class="cta-button px-6 flex items-center justify-center text-white font-medium whitespace-nowrap h-[50px] w-full max-w-[316px] sm:w-auto">
+              Request a licence extension
             </button>
           </form>
           <p
             id="backbone-community-expired-formspree-success"
-            class="hidden mt-4 rounded-lg border border-[#939db833] bg-[#171926]/90 px-4 py-3 text-13 leading-[145%] text-neutral-200"
+            class="hidden mt-3 max-w-[640px] rounded-lg border border-[#939db833] bg-[#171926]/90 px-4 py-3 text-13 leading-[145%] text-neutral-200"
             role="status">
             Thanks — we will reply at this email.
           </p>
           <p
             id="backbone-community-expired-formspree-error"
-            class="hidden mt-4 rounded-lg border border-red-500/40 bg-[#171926]/90 px-4 py-3 text-13 leading-[145%] text-red-200/90"
+            class="hidden mt-3 max-w-[640px] rounded-lg border border-red-500/40 bg-[#171926]/90 px-4 py-3 text-13 leading-[145%] text-red-200/90"
             role="alert"></p>
+        </section>
+
+        <section id="licence-done-token-spent" class="max-w-[640px] hidden" style="text-wrap: pretty">
+          <h1 class="font-helveticaDisplay text-white font-bold text-[40px] leading-[110%]">
+            This download link has expired
+          </h1>
+          <p class="mt-4 text-neutral-200 text-lg leading-[145%]">
+            Your Community licence might still be valid. Try again to
+            <a
+              class="text-[#7C87F7] hover:underline"
+              href="https://licence.backbonehq.io/oauth/github/start"
+              >Continue with GitHub</a
+            >.
+          </p>
         </section>
 
         <section id="licence-done-pending" class="max-w-[640px]" style="text-wrap: pretty">

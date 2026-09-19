@@ -2,11 +2,11 @@
 
 ## Copy
 
-| Element | Text |
-| --- | --- |
-| Button | Is Backbone right for me? |
-| Email placeholder | Your work e-mail |
-| Success | Thanks - we received your email and will be in touch. |
-| Fields | `email` (required) |
+| Element           | Text                                                  |
+|-------------------|-------------------------------------------------------|
+| Button            | Is Backbone right for me?                             |
+| Email placeholder | Your work e-mail                                      |
+| Success           | Thanks - we received your email and will be in touch. |
+| Fields            | `email` (required)                                    |
 
-Wire endpoint into `public/index.html` and compare pages (replace dead `mreoekzn`).
+Wire endpoint: `https://formspree.io/f/moevvzpq` (`public/index.html` + compare pages).
