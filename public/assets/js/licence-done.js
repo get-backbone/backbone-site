@@ -33,8 +33,34 @@
 
   var bodyEl = document.getElementById("licence-body");
   var toggle = document.getElementById("licence-toggle");
+  var toggleLabel = document.getElementById("licence-toggle-label");
+  var iconShow = document.getElementById("licence-toggle-icon-show");
+  var iconHide = document.getElementById("licence-toggle-icon-hide");
   var copyBtn = document.getElementById("licence-copy");
   var licenceText = "";
+  var revealed = false;
+
+  function maskLicence(text) {
+    return text.replace(/./g, "*");
+  }
+
+  function renderLicence() {
+    if (!bodyEl || !licenceText) return;
+    bodyEl.textContent = revealed ? licenceText : maskLicence(licenceText);
+    if (toggle) {
+      toggle.setAttribute("aria-pressed", revealed ? "true" : "false");
+      toggle.setAttribute("title", revealed ? "Hide licence" : "Show licence");
+    }
+    if (toggleLabel) toggleLabel.textContent = revealed ? "Hide" : "Show";
+    if (iconShow) {
+      if (revealed) iconShow.classList.add("hidden");
+      else iconShow.classList.remove("hidden");
+    }
+    if (iconHide) {
+      if (revealed) iconHide.classList.remove("hidden");
+      else iconHide.classList.add("hidden");
+    }
+  }
 
   fetch("https://licence.backbonehq.io/v1/licence/community?token=" + encodeURIComponent(token), {
     headers: { Accept: "text/plain" },
@@ -52,28 +78,28 @@
     })
     .then(function (text) {
       licenceText = text.trim();
-      if (bodyEl) bodyEl.textContent = licenceText;
+      renderLicence();
     })
     .catch(function (err) {
       if (err && err.message === "expired") return;
       if (pending) {
         hide(active);
         show(pending);
-        pending.querySelector("p").textContent =
-          "Could not load the licence file yet. Try Continue with GitHub again from /licence/.";
+        var heading = pending.querySelector("h1");
+        var blurb = pending.querySelector("p");
+        if (heading) heading.textContent = "Could not load licence file";
+        if (blurb) {
+          blurb.innerHTML =
+            'Try again to <a class="text-[#7C87F7] hover:underline" href="https://licence.backbonehq.io/oauth/github/start">Continue with GitHub</a>.';
+        }
       }
     });
 
-  if (toggle && bodyEl) {
+  if (toggle) {
     toggle.addEventListener("click", function () {
-      var hidden = bodyEl.classList.contains("hidden");
-      if (hidden) {
-        bodyEl.classList.remove("hidden");
-        toggle.textContent = "Hide licence";
-      } else {
-        bodyEl.classList.add("hidden");
-        toggle.textContent = "Show licence";
-      }
+      if (!licenceText) return;
+      revealed = !revealed;
+      renderLicence();
     });
   }
 
@@ -81,9 +107,11 @@
     copyBtn.addEventListener("click", function () {
       if (!licenceText) return;
       navigator.clipboard.writeText(licenceText).then(function () {
-        copyBtn.textContent = "Copied";
+        copyBtn.setAttribute("title", "Copied");
+        copyBtn.setAttribute("aria-label", "Copied");
         setTimeout(function () {
-          copyBtn.textContent = "Copy";
+          copyBtn.setAttribute("title", "Copy");
+          copyBtn.setAttribute("aria-label", "Copy licence");
         }, 1500);
       });
     });

@@ -1,17 +1,22 @@
 User-agent: *
 Allow: /
+Disallow: /founding-partners/
 
 User-agent: GPTBot
 Allow: /
+Disallow: /founding-partners/
 
 User-agent: ClaudeBot
 Allow: /
+Disallow: /founding-partners/
 
 User-agent: PerplexityBot
 Allow: /
+Disallow: /founding-partners/
 
 User-agent: Google-Extended
 Allow: /
+Disallow: /founding-partners/
 
 Sitemap: https://backbonehq.io/sitemap.xml
 # LLM Information: https://backbonehq.io/llms.txt
