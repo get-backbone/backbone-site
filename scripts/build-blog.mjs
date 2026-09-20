@@ -26,7 +26,6 @@ const contentDir = path.join(root, "content", "blog");
 const blogOutDir = path.join(publicRoot, "blog");
 
 const SITE = "https://backbonehq.io";
-const DOCS_SITE = "https://docs.backbonehq.io";
 const BLOG_TITLE = "Backbone Engineering";
 const BLOG_DESC =
   "Opinionated engineering notes on building production SaaS platforms - from runtime architecture and platform engineering to the realities of running software at scale.";
@@ -45,11 +44,10 @@ marked.use({
   },
 });
 
-// Authoritative list of non-blog routes on this host. Docs child pages live
-// on docs.backbonehq.io and are listed in ReadMe's own sitemap, not here.
+// Authoritative list of non-blog routes on this host only. Docs live on
+// docs.backbonehq.io (separate GSC property + ReadMe sitemap) — never list them here.
 const STATIC_ROUTES = [
   { loc: `${SITE}/`, lastmod: "2026-05-25" },
-  { loc: `${DOCS_SITE}/`, lastmod: "2026-06-22" },
   { loc: `${SITE}/faq/`, lastmod: "2026-05-25" },
   { loc: `${SITE}/privacy/`, lastmod: "2026-05-25" },
   { loc: `${SITE}/terms/`, lastmod: "2026-05-25" },
