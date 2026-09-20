@@ -6023,7 +6023,7 @@ textarea:autofill {
 
 /* Keep tier blurbs the same height so price rows align when copy wraps */
 .pricing-tier-blurb {
-  min-height: 5.5rem;
+  min-height: 4.5rem;
 }
 
 /* Four pricing tiers — narrower cards, slightly tighter gaps */
