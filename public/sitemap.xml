@@ -42,7 +42,11 @@
   </url>
   <url>
     <loc>https://backbonehq.io/blog/</loc>
-    <lastmod>2026-08-09</lastmod>
+    <lastmod>2026-09-21</lastmod>
+  </url>
+  <url>
+    <loc>https://backbonehq.io/blog/quarkus-graalvm-advanced-obfuscation/</loc>
+    <lastmod>2026-09-21</lastmod>
   </url>
   <url>
     <loc>https://backbonehq.io/blog/vibe-coding-is-reckless-defined-architecture-patterns-fix-it/</loc>

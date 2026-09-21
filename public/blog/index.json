@@ -1,5 +1,22 @@
 [
   {
+    "title": "Quarkus + GraalVM Advanced Obfuscation How to open-source your runtime without open-sourcing your IP",
+    "slug": "quarkus-graalvm-advanced-obfuscation",
+    "url": "/blog/quarkus-graalvm-advanced-obfuscation/",
+    "summary": "GraalVM 25 Advanced Obfuscation can turn Quarkus native images into a practical distribution boundary - if you avoid -H:Preserve and use conditional reflection metadata instead. A reproducible walkthrough with CDI, Fault Tolerance, Redis, and Hibernate.",
+    "published": "2026-09-21",
+    "updated": "2026-09-21",
+    "tags": [
+      "quarkus",
+      "graalvm",
+      "native-image",
+      "obfuscation",
+      "java",
+      "open-source"
+    ],
+    "readingTime": 7
+  },
+  {
     "title": "Vibe Coding Is Reckless. Defined Architecture Patterns Fix It.",
     "slug": "vibe-coding-is-reckless-defined-architecture-patterns-fix-it",
     "url": "/blog/vibe-coding-is-reckless-defined-architecture-patterns-fix-it/",

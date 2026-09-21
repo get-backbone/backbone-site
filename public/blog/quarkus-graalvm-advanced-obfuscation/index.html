@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Quarkus + GraalVM Advanced Obfuscation How to open-source your runtime without open-sourcing your IP | Backbone</title>
+    <meta name="description" content="How I made Oracle GraalVM 25 Advanced Obfuscation work with a real Quarkus service: why -H:Preserve breaks Quarkus native builds, how invert-target reflect-config keeps SmallRye Fault Tolerance / Arjuna / Vert.x names without force-including the classpath, and what that enables for distributing opaque Community runtimes." />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link href="https://backbonehq.io/blog/quarkus-graalvm-advanced-obfuscation/" rel="canonical" />
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="https://backbonehq.io/blog/quarkus-graalvm-advanced-obfuscation/" />
+    <meta property="og:title" content="Quarkus + GraalVM Advanced Obfuscation How to open-source your runtime without open-sourcing your IP | Backbone" />
+    <meta property="og:description" content="How I made Oracle GraalVM 25 Advanced Obfuscation work with a real Quarkus service: why -H:Preserve breaks Quarkus native builds, how invert-target reflect-config keeps SmallRye Fault Tolerance / Arjuna / Vert.x names without force-including the classpath, and what that enables for distributing opaque Community runtimes." />
+    <meta property="og:image" content="https://backbonehq.io/assets/images/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Quarkus + GraalVM Advanced Obfuscation How to open-source your runtime without open-sourcing your IP | Backbone" />
+    <meta name="twitter:description" content="How I made Oracle GraalVM 25 Advanced Obfuscation work with a real Quarkus service: why -H:Preserve breaks Quarkus native builds, how invert-target reflect-config keeps SmallRye Fault Tolerance / Arjuna / Vert.x names without force-including the classpath, and what that enables for distributing opaque Community runtimes." />
+    <meta name="twitter:image" content="https://backbonehq.io/assets/images/og.png" />
+    <link rel="alternate" type="application/rss+xml" title="Backbone Engineering" href="/blog/feed.xml" />
+    <link rel="stylesheet" href="/assets/css/main.css" media="all" />
+    <link rel="stylesheet" href="/assets/css/blog.css" media="all" />
+    <link rel="stylesheet" href="/assets/css/vendor/glightbox.min.css" media="all" />
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Quarkus + GraalVM Advanced Obfuscation How to open-source your runtime without open-sourcing your IP",
+  "description": "How I made Oracle GraalVM 25 Advanced Obfuscation work with a real Quarkus service: why -H:Preserve breaks Quarkus native builds, how invert-target reflect-config keeps SmallRye Fault Tolerance / Arjuna / Vert.x names without force-including the classpath, and what that enables for distributing opaque Community runtimes.",
+  "datePublished": "2026-09-21",
+  "dateModified": "2026-09-21",
+  "articleSection": "Backbone Engineering",
+  "keywords": "quarkus, graalvm, native-image, obfuscation, java, open-source",
+  "url": "https://backbonehq.io/blog/quarkus-graalvm-advanced-obfuscation/",
+  "mainEntityOfPage": "https://backbonehq.io/blog/quarkus-graalvm-advanced-obfuscation/",
+  "image": "https://backbonehq.io/assets/images/og.png",
+  "author": {
+    "@type": "Person",
+    "name": "Andrew Eells"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Backbone",
+    "url": "https://backbonehq.io/",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://backbonehq.io/assets/images/og.png"
+    }
+  }
+}
+    </script>
+    <script type="module" src="/assets/js/layout-shell.js"></script>
+  </head>
+  <body class="helvetica bg-[#0B0C14] text-neutral-200">
+    <div class="main overflow-x-hidden has-top-glow">
+      <header class="z-40 top-0 left-0 right-0 flex justify-center helvetica bg-[#0B0C14]/80 fixed before:absolute before:-z-10 before:inset-0 before:backdrop-blur-2xl" id="navbar">
+  <nav
+    class="page-rail grow flex h-[52px] justify-between border-b text-[13px] leading-[100%] text-[#C9D3EE] border-[#727DA1]/15">
+    <div class="flex min-w-0 items-stretch gap-3">
+      <a aria-label="Go to homepage" class="flex shrink-0 items-center py-3" href="/">
+        <svg width="125" height="21" class="backbone-site-header-logo svg-currentcolor" aria-hidden="true" focusable="false">
+          <use href="/assets/images/brand/backbone-lockup.svg#root"></use>
+        </svg>
+      </a>
+    </div>
+    <div class="flex min-w-0 flex-1 items-center justify-end gap-2 sm:gap-3">
+      <div class="hidden md:flex flex-wrap items-center justify-end gap-x-1 gap-y-2 lg:gap-x-3">
+        <a class="px-2 py-3 lg:px-3 hover:text-white transition whitespace-nowrap" href="https://docs.backbonehq.io" target="_blank" rel="noopener noreferrer">Docs</a>
+        <a class="px-2 py-3 lg:px-3 hover:text-white transition whitespace-nowrap text-white" href="/blog/">Blog</a>
+        <a class="px-2 py-3 lg:px-3 hover:text-white transition whitespace-nowrap" href="/faq/">FAQ</a>
+        <a class="px-2 py-3 lg:px-3 hover:text-white transition whitespace-nowrap" href="/#pricing">Pricing</a>
+        <a class="px-2 py-3 lg:px-3 hover:text-white transition whitespace-nowrap" href="/#contact">Contact</a>
+      </div>
+      <div class="flex items-center sm:gap-2 whitespace-nowrap shrink-0 -mr-3 md:mr-0">
+        <button aria-label="Open menu" class="p-2 group relative md:hidden text-neutral-300" id="open-menu">
+          <svg class="w-5 h-5 inline svg-currentcolor">
+            <use href="/assets/icons/heroicons_v2/outline/bars-3-4a440a20.svg#root"></use>
+          </svg>
+        </button>
+        <button aria-label="Close menu" class="hidden p-2 group relative md:hidden text-neutral-300" id="close-menu">
+          <svg class="w-5 h-5 inline svg-currentcolor">
+            <use href="/assets/icons/heroicons_v2/outline/x-mark-1a7d1e94.svg#root"></use>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div
+      class="hidden md:hidden p-5 fixed z-40 left-0 right-0 site-mobile-menu-top backdrop-blur-2xl bg-[#181926]/80 text-[#C9D3EE] overflow-y-scroll mobile-menu-maxh"
+      id="mobile-menu">
+      <div class="js-menu-section flex flex-col gap-1" data-section="root">
+        <a class="p-3" href="https://docs.backbonehq.io" target="_blank" rel="noopener noreferrer">Docs</a>
+        <a class="p-3 text-white" href="/blog/">Blog</a>
+        <a class="p-3" href="/faq/">FAQ</a>
+        <a class="p-3" href="/#pricing">Pricing</a>
+        <a class="p-3" href="/#contact">Contact</a>
+      </div>
+    </div>
+  </nav>
+</header>
+      <main class="page-rail pt-32 pb-24">
+        <article class="blog-article">
+          <a class="blog-back" href="/blog/">&larr; All articles</a>
+          <h1>Quarkus + GraalVM Advanced Obfuscation<br>How to open-source your runtime without open-sourcing your IP</h1>
+          <div class="blog-byline">
+            By Andrew Eells &middot;
+            <time datetime="2026-09-21">21 September 2026</time> &middot;
+            7 min read
+          </div>
+          <ul class="blog-tags" aria-label="Tags"><li>quarkus</li><li>graalvm</li><li>native-image</li><li>obfuscation</li><li>java</li><li>open-source</li></ul>
+          <hr class="blog-rule" aria-hidden="true" />
+          <div class="blog-prose">
+<p>I&#39;ve spent the last 18 months building <a href="https://backbonehq.io/" target="_blank" rel="noopener noreferrer">Backbone</a>, a production platform bootstrap for SaaS startup engineering teams.</p>
+<p>I recently open-sourced the Community edition. Community is meant to be genuinely usable for local development: run the platform services, scaffold product domain services, build against a real runtime. What I <em>didn&#39;t</em> want to do is open source the entire codebase.</p>
+<p>That&#39;s an awkward distribution problem. Java bytecode is a weak boundary. Even without source, a normal JVM artifact still leaves a lot of useful structure behind.</p>
+<p>GraalVM Native Image already helps: you ship machine code, not class files, and closed-world analysis strips unreachable code. GraalVM 25 adds another layer - Advanced Obfuscation (AO) - which replaces meaningful module, package, class, method, field, and source-file names with opaque symbols across application code and third-party dependencies.</p>
+<p>The interesting question was never &quot;does <code>-H:AdvancedObfuscation</code> work on Hello World?&quot;</p>
+<p>It was whether AO would survive a real Quarkus service.</p>
+<p>I couldn&#39;t find a public write-up of anyone getting that working with a CDI-heavy Quarkus stack, so I tried it. The working reproduction is here:</p>
+<p><a href="https://github.com/get-backbone/quarkus-graalvm-ao" target="_blank" rel="noopener noreferrer">github.com/get-backbone/quarkus-graalvm-ao</a></p>
+<h2>The problem</h2>
+<p>Backbone Community needs runnable platform services. Users should be able to start auth, actor, notification, and document locally - not inherit a crippled source-only stub - and build their own domain services against that runtime. When they&#39;re ready to ship, a commercial licence unlocks the rest: full source code access to modify the backing services, CI/CD release pipelines, infrastructure automation, AWS deployments, security, scale, and compliance features.</p>
+<p>But Community isn&#39;t the production platform. Extending core services and deploying to AWS sit behind that licence. The open surface is the local toolchain, domain-service scaffolding, SDK APIs, and the runnable platform images. The proprietary service implementations stay closed.</p>
+<p>So the distribution model I wanted looked like this:</p>
+<pre><code class="language-text">Private service source (IP)
+        │
+        ▼
+Quarkus native build (Oracle GraalVM 25)
+        │
+        ▼
+Advanced Obfuscation
+        │
+        ▼
+Opaque Linux native image
+        │
+        ▼
+Public Community distribution (development-only)
+</code></pre>
+<p>AO is only the binary distribution boundary. Community still needs a signed licence, and the platform adds its own integrity and entitlement checks - so the free tier stays something you develop against, not a way to run production for free.</p>
+<p>AO turns native compilation from &quot;just a deployment format&quot; into a practical <strong>distribution boundary</strong>. Not a security boundary. Not DRM. A skilled attacker with time and the right tools can still reverse-engineer native binaries - but that&#39;s a different bar from unzipping a JAR and reading class files. &quot;Here is a runnable service whose implementation isn&#39;t sitting there as readable Java&quot; is a much more useful open-source story for a commercial platform product than a stripped demo.</p>
+<h2>First attempt: build succeeded, Quarkus died</h2>
+<p>AO is experimental and Oracle-GraalVM-only. Quarkus&#39;s native ecosystem is Mandrel-first, so this isn&#39;t a well-trodden path.</p>
+<p>I pointed a real service at Oracle GraalVM 25 with:</p>
+<pre><code class="language-text">-H:AdvancedObfuscation=export-mapping
+</code></pre>
+<p>The native build completed. Startup then fell over inside SmallRye Fault Tolerance with an NPE. The stack trace was partially obfuscated, which made the evening more educational than it needed to be :/</p>
+<p><code>export-mapping</code> produces a JSON map from original names to obfuscated ones (and lets you deobfuscate stack traces later). That was enough to see what was going on: AO isn&#39;t just cosmetic for anyone poking at the binary with a disassembler. Anything that depends on runtime names - <code>Class#getName()</code>, reflective lookup, CDI bean resolution, FT frames - can change behaviour when those names change.</p>
+<h2><code>-H:Preserve</code> looked right but wasn&#39;t</h2>
+<p><a href="https://docs.oracle.com/en/graalvm/jdk/25/docs/security-guide/native-image/obfuscation/" target="_blank" rel="noopener noreferrer">Oracle&#39;s docs</a> point at <code>-H:Preserve</code> as the carve-out.</p>
+<p>On a Quarkus classpath, Preserve is the wrong tool.</p>
+<p>Preserve is a <strong>reachability</strong> mechanism as well as a rename exclusion. Broad package preservation started dragging optional and otherwise-unreachable types into the image - logging bridges, Kotlin metadata, MicroProfile Metrics, deployment classes, and friends. The build then failed with missing classes. Narrower Preserve lists still pulled optionals in.</p>
+<p>I wanted:</p>
+<blockquote>
+<p>If this type is already reachable, keep its name.</p>
+</blockquote>
+<p>Preserve gave me:</p>
+<blockquote>
+<p>Make this code available even if analysis didn&#39;t find it, <em>and</em> don&#39;t rename it.</p>
+</blockquote>
+<p>For Quarkus, that second behaviour felt like a bit of a sledgehammer.</p>
+<h2>The fix: invert-target reflection metadata</h2>
+<p>GraalVM&#39;s AO rules are clearer once you look for them: classes registered for reflection in reachability metadata aren&#39;t obfuscated. Reflection registration is rename protection. It isn&#39;t, by itself, a force-include of the whole package.</p>
+<p>The pattern that worked was conditional <code>reflect-config.json</code> entries - what I ended up calling invert-target registrations:</p>
+<pre><code class="language-json">{
+  &quot;name&quot;: &quot;io.smallrye.faulttolerance.…&quot;,
+  &quot;condition&quot;: {
+    &quot;typeReachable&quot;: &quot;io.smallrye.faulttolerance.…&quot;
+  }
+}
+</code></pre>
+<p>If the type is reachable, AO leaves the name alone. If it isn&#39;t reachable, the registration is a no-op and doesn&#39;t suddenly pull half of Quarkus into the image.</p>
+<p>That distinction - Preserve vs conditional reflection - was the entire unlock.</p>
+<h2>It didn&#39;t stop at Fault Tolerance</h2>
+<p>Once FT started cleanly, other name-sensitive framework edges showed up.</p>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>What fixed it</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SmallRye FT NPE / mangled FT frames</td>
+<td>FT invert-target generator</td>
+</tr>
+<tr>
+<td><code>NoSuchMethodException</code> on Arjuna <code>*EnvironmentBean</code></td>
+<td>Narrow Arjuna suffix allowlist (blanket <code>com.arjuna.**</code> OOMed / timed out the AO compile)</td>
+</tr>
+<tr>
+<td>CDI <code>No bean found</code> for an obfuscated Vert.x type</td>
+<td>Redis / Mutiny Vert.x invert-target generator</td>
+</tr>
+<tr>
+<td>Micrometer Vert.x binder NPE under AO</td>
+<td><code>quarkus.micrometer.binder.vertx.enabled=false</code></td>
+</tr>
+</tbody></table>
+<p>The Quarkus runtime under test was Quarkus <strong>3.36.1</strong> on Oracle GraalVM <strong>25</strong>, running a production-like stack:</p>
+<ul>
+<li>Quarkus ArC CDI</li>
+<li>SmallRye Fault Tolerance</li>
+<li>Redis cache</li>
+<li>Postgres/Hibernate</li>
+<li>SmallRye Health + Micrometer/Prometheus</li>
+<li><a href="https://github.com/get-backbone/backbone-kit" target="_blank" rel="noopener noreferrer">backbone-kit</a> metrics, logging, throttle components</li>
+</ul>
+<p>I used small generators to rebuild the three reflect carve-outs before each AO build; the Linux/glibc native image comes out of Oracle GraalVM 25 with Advanced Obfuscation enabled.</p>
+<p>Build time is the main cost. An AO native build of a Backbone service took around 20 minutes. Oracle documents AO as typically adding ~20–50% to native-image time, with no runtime performance or memory overhead.</p>
+<h2>What ships</h2>
+<p>Community platform services are distributed as protected native images on GHCR.</p>
+<p>You can pull and run them locally with the <a href="https://github.com/get-backbone/backbone-community" target="_blank" rel="noopener noreferrer">Community edition of Backbone</a>. The proprietary Java source doesn&#39;t come with them.</p>
+<p>The same approach is documented end-to-end in the demo public repo so anyone can reproduce the mechanism, without needing the full Backbone tree:</p>
+<p><a href="https://github.com/get-backbone/quarkus-graalvm-ao" target="_blank" rel="noopener noreferrer">get-backbone/quarkus-graalvm-ao</a></p>
+<pre><code class="language-bash">task compose:up
+task test          # JVM path
+task ao:build      # regenerates reflect-config, then AO native (~15m)
+task ao:image
+task ao:run
+task ao:smoke
+</code></pre>
+<h2>Caveats worth saying out loud</h2>
+<p>AO is experimental and Oracle-GraalVM-only. Behaviour can shift between releases; pin versions and test the obfuscated image.</p>
+<p>AO isn&#39;t encryption, and it doesn&#39;t make reverse engineering impossible. It does turn &quot;read the implementation&quot; into specialist native-binary work - Ghidra/IDA territory, opaque symbols, closed-world stripping - rather than an afternoon with a Java decompiler.</p>
+<p>Keep the mapping file with the build so you can deobfuscate production stack traces. Don&#39;t ship it in the image.</p>
+<p>Watch the SBOM. <a href="https://docs.oracle.com/en/graalvm/jdk/25/docs/security-guide/native-image/obfuscation/" target="_blank" rel="noopener noreferrer">Oracle warns</a> that embedded class-level SBOM data can re-expose original symbol names under AO; export the SBOM or disable embedding when confidentiality matters.</p>
+<p>And one extra Quarkus footgun just for fun: CLI <code>-Dquarkus.native.additional-build-args=…</code> <strong>replaces</strong> the property rather than merging with it. If you also need <code>--initialize-at-run-time=…</code> (I did for <code>jansi</code>), put both flags on the same CLI list, or you&#39;ll silently drop one.</p>
+<h2>What this enables for Backbone</h2>
+<pre><code class="language-text">Community (free, development-only)
+    ├── local Floci / Postgres / Redis backends
+    ├── AO native platform services (auth, actor, notification, document)
+    ├── domain-service scaffolding (auth, throttling, logging, metrics baked in)
+    ├── BFF API + stateless reference UI (Quarkus dev mode)
+    └── open SDK surface + local tooling
+              │
+              │  licence when ready to ship
+              ▼
+         source code + CI/CD + IaC + AWS deploy + enterprise scale, security, compliance concerns
+</code></pre>
+<p>Users get something they can actually run and build against. They don&#39;t get the commercial platform implementation as public Java source just because Community distribution is public.</p>
+<p>That&#39;s a much more valuable open-source boundary for this kind of product than a sales demo or video pitch before upgrading.</p>
+<h2>Takeaway</h2>
+<p>What&#39;s missing from the Oracle Advanced Obfuscation docs is an account of making AO work with a real Quarkus application - including CDI and SmallRye Fault Tolerance - without resorting to <code>-H:Preserve</code> and watching the native build eat optional dependencies.</p>
+<p>The short version:</p>
+<blockquote>
+<p><strong>Don&#39;t preserve Quarkus. Register the few name-sensitive types with conditional reflection metadata, and let AO rename everything else.</strong></p>
+</blockquote>
+<p>Start here if you&#39;re about to spend a day discovering that the hard way:</p>
+<p><strong><a href="https://github.com/get-backbone/quarkus-graalvm-ao" target="_blank" rel="noopener noreferrer">get-backbone/quarkus-graalvm-ao</a></strong></p>
+<p><a href="https://quarkus.io/" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Quarkus-3.36.1-4695EB?logo=quarkus&logoColor=white" alt="Quarkus"></a></p>
+<p><a href="https://www.graalvm.org/jdk25/security-guide/native-image/obfuscation/" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/GraalVM-25-F2A900?logo=oracle&logoColor=white" alt="GraalVM"></a></p>
+
+          </div>
+        </article>
+
+        <section class="blog-related" aria-labelledby="related-heading">
+          <h2 id="related-heading">Related articles</h2>
+          <ul>
+            <li><a href="/blog/quarkus-github-actions-reducing-ci-time-by-half-without-larger-runners/">Quarkus + GitHub Actions: Reducing CI Time by 50% Without Larger Runners</a><span class="blog-related-meta">6 August 2026 · 10 min read</span></li>
+            <li><a href="/blog/vibe-coding-is-reckless-defined-architecture-patterns-fix-it/">Vibe Coding Is Reckless. Defined Architecture Patterns Fix It.</a><span class="blog-related-meta">9 August 2026 · 4 min read</span></li>
+            <li><a href="/blog/twenty-five-years-of-shifting-left/">We've Spent 25 Years Shifting Left. The Next Shift Is Down.</a><span class="blog-related-meta">24 July 2026 · 4 min read</span></li>
+          </ul>
+        </section>
+
+        <section class="blog-cta">
+          <div class="prose-cta-box rounded-xl border border-[#939DB8]/10 bg-[#0F101A]">
+            <h2 class="text-white font-semibold text-[18px] md:text-[20px]">Building production software at scale?</h2>
+            <p class="mt-3 text-neutral-300 leading-[165%]">
+              Backbone is an opinionated runtime foundation for modern SaaS systems - designed to handle deployment,
+              observability, security, and cloud-native operations as a coherent whole.
+            </p>
+            <p class="mt-2 text-neutral-300 leading-[165%]">
+              So your team can focus on business value rather than undifferentiated effort.
+            </p>
+            <div class="mt-6 flex flex-wrap gap-3">
+              <a class="inline-flex items-center justify-center rounded-lg px-5 py-2.5 text-sm font-medium text-white border border-[#939DB8]/20 bg-[#727DA1]/10 hover:bg-[#727DA1]/20 transition-colors" href="/">Explore Backbone</a>
+              <a class="inline-flex items-center justify-center rounded-lg px-5 py-2.5 text-sm font-medium text-white border border-[#939DB8]/20 bg-[#727DA1]/10 hover:bg-[#727DA1]/20 transition-colors" href="/faq/">Read the FAQ</a>
+            </div>
+          </div>
+        </section>
+      </main>
+      <div class="dark">
+  <footer class="bg-[#F3F4F7] dark:bg-[#0B0C14]">
+    <div class="page-rail text-base text-[#363D4E] dark:text-neutral-200">
+      <div
+        class="pt-7 flex flex-col lg:flex-row justify-between items-center lg:items-end border-t border-neutral-300/10">
+        <div>
+          <svg width="125" height="21" alt="" class="text-black dark:text-white scale-75 lg:scale-100 svg-currentcolor">
+            <use href="/assets/images/brand/backbone-lockup.svg#root"></use>
+          </svg>
+          <p class="mt-3 hidden lg:block max-w-[342px]">
+            Production-grade bootstrapping.
+            <br />
+            Enterprise foundations. Startup speed.
+          </p>
+        </div>
+        <div class="flex items-center gap-6 whitespace-nowrap">
+          <a
+            class="hidden lg:block -mx-1 px-1 js-obfuscated-phone"
+            href="#"
+            data-phone-country="1"
+            data-phone-area="604"
+            data-phone-prefix="932"
+            data-phone-line="8674"
+            aria-label="Call Backbone"></a>
+          <a class="hidden lg:block -mx-1 px-1" href="mailto:hello@backbonehq.io">hello@backbonehq.io</a>
+          <div class="hidden lg:block h-4 border-l border-neutral-300/10"></div>
+          <div class="hidden lg:flex">
+            <div class="flex gap-4 text-neutral-300">
+              <a
+                aria-label="Backbone on LinkedIn"
+                href="https://www.linkedin.com/company/get-backbone/"
+                rel="nofollow noopener"
+                target="_blank">
+                <svg width="16" height="17" class="svg-currentcolor">
+                  <use href="/assets/images/social/linkedin-143ab64c.svg#root"></use>
+                </svg>
+              </a>
+              <a aria-label="Get Backbone on Github" href="https://github.com/get-backbone/" rel="nofollow noopener" target="_blank">
+                <svg width="16" height="17" class="svg-currentcolor">
+                  <use href="/assets/images/social/github-8e0718fe.svg#root"></use>
+                </svg>
+              </a>
+              <a aria-label="Backbone on X" href="https://x.com/_backbonehq" rel="nofollow noopener" target="_blank">
+                <svg width="16" height="17" class="svg-currentcolor">
+                  <use href="/assets/images/social/twitter-x.svg#root"></use>
+                </svg>
+              </a>
+              <a
+                aria-label="Backbone on Reddit"
+                href="https://www.reddit.com/user/backbonehq/"
+                rel="nofollow noopener"
+                target="_blank">
+                <svg width="16" height="17" class="svg-currentcolor">
+                  <use href="/assets/images/social/reddit.svg#root"></use>
+                </svg>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <nav
+        class="mt-5 py-4 border-t border-neutral-300/10"
+        aria-label="Compare Backbone">
+        <p class="text-center lg:text-left font-semibold text-white">BACKBONE VS</p>
+        <div class="mt-3 flex flex-wrap justify-center lg:justify-start gap-6">
+          <a class="-mx-1 px-1" href="/compare/diy/" aria-label="Backbone vs DIY / Consultancy">DIY / Consultancy</a>
+          <a class="-mx-1 px-1" href="/compare/duplocloud/" aria-label="Backbone vs DuploCloud">DuploCloud</a>
+          <a class="-mx-1 px-1" href="/compare/coherence/" aria-label="Backbone vs Coherence">Coherence</a>
+          <a class="-mx-1 px-1" href="/compare/encore/" aria-label="Backbone vs Encore">Encore</a>
+          <a class="-mx-1 px-1" href="/compare/">See full comparison →</a>
+        </div>
+      </nav>
+      <div
+        class="py-3 border-t flex flex-col lg:flex-row justify-between items-center border-neutral-300/10 text-[12px] leading-[18px]">
+        <div class="flex items-center gap-6 whitespace-nowrap dark:text-neutral-300">
+          <a class="-mx-1 px-1" href="/terms/">Terms of Use</a>
+          <a class="-mx-1 px-1" href="/privacy/">Privacy Policy</a>
+          <a class="-mx-1 px-1" href="/licence/">Commercial Licence</a>
+        </div>
+        <div class="mt-8 mb-2 flex lg:hidden">
+          <div class="flex gap-4 text-neutral-300">
+            <a
+              aria-label="Backbone on LinkedIn"
+              href="https://www.linkedin.com/company/get-backbone/"
+              rel="nofollow noopener"
+              target="_blank">
+              <svg width="16" height="17" class="svg-currentcolor">
+                <use href="/assets/images/social/linkedin-143ab64c.svg#root"></use>
+              </svg>
+            </a>
+            <a aria-label="Get Backbone on Github" href="https://github.com/get-backbone/" rel="nofollow noopener" target="_blank">
+              <svg width="16" height="17" class="svg-currentcolor">
+                <use href="/assets/images/social/github-8e0718fe.svg#root"></use>
+              </svg>
+            </a>
+            <a aria-label="Backbone on X" href="https://x.com/_backbonehq" rel="nofollow noopener" target="_blank">
+              <svg width="16" height="17" class="svg-currentcolor">
+                <use href="/assets/images/social/twitter-x.svg#root"></use>
+              </svg>
+            </a>
+            <a
+              aria-label="Backbone on Reddit"
+              href="https://www.reddit.com/user/backbonehq/"
+              rel="nofollow noopener"
+              target="_blank">
+              <svg width="16" height="17" class="svg-currentcolor">
+                <use href="/assets/images/social/reddit.svg#root"></use>
+              </svg>
+            </a>
+          </div>
+        </div>
+        <div class="flex items-center text-neutral-300">© 2026 Andrew Eells. All rights reserved.</div>
+      </div>
+    </div>
+  </footer>
+</div>
+    </div>
+<!-- Page Pulse Tracking Script -->
+<script>
+(function(){
+  if(window.self!==window.top)return;
+  var pid="3a4fef70-c3d3-4aa9-9865-c50dff3d9c89";
+  var tk="24a78f50-2db9-49b2-920f-206c1c6edb6d";
+  var ep="https://esnubozrjxrbegatzusu.supabase.co/functions/v1/track";
+  var sid=sessionStorage.getItem("_pp_sid")||Math.random().toString(36).slice(2);
+  sessionStorage.setItem("_pp_sid",sid);
+  var vid=localStorage.getItem("_pp_vid")||Math.random().toString(36).slice(2);
+  localStorage.setItem("_pp_vid",vid);
+  var lastUrl=location.href;
+  function send(t,n){
+    fetch(ep,{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({page_id:pid,token:tk,url:location.href,referrer:document.referrer,
+        user_agent:navigator.userAgent,screen_width:screen.width,
+        session_id:sid,visitor_id:vid,event_type:t,element_name:n||null})});
+  }
+  send("pageview");
+  document.addEventListener("click",function(e){
+    var el=e.target.closest("a,button,[role='button'],input[type='submit']");
+    if(!el)return;
+    var p=el;while(p){var s=getComputedStyle(p);if(s.position==="fixed"||s.position==="sticky"){var r=p.getBoundingClientRect();if(r.width>window.innerWidth*0.4&&r.height>window.innerHeight*0.3)return;}p=p.parentElement;}
+    var name=el.getAttribute("data-pp")||el.innerText||el.getAttribute("aria-label")||el.tagName;
+    if(name)send("click",name.trim().substring(0,100));
+  });
+  function checkUrl(){if(location.href!==lastUrl){lastUrl=location.href;send("pageview");}}
+  var origPush=history.pushState;history.pushState=function(){origPush.apply(this,arguments);checkUrl();};
+  var origReplace=history.replaceState;history.replaceState=function(){origReplace.apply(this,arguments);checkUrl();};
+  window.addEventListener("popstate",checkUrl);
+  setInterval(function(){if(!document.hidden)send("ping");},15000);
+  var _cc={};
+  function trackConversion(label){var k=label||"_";if(_cc[k])return;_cc[k]=1;send("conversion",label||null);}
+  window.PagePulse=window.PagePulse||{};
+  window.PagePulse.trackConversion=trackConversion;
+  window.pagePulse=window.PagePulse;
+  /* Web Vitals: LCP, CLS, INP, page load time */
+  var _v={cls:0,inp:0};
+  try{
+    if(window.PerformanceObserver){
+      try{new PerformanceObserver(function(l){var e=l.getEntries();if(e.length)_v.lcp=Math.round(e[e.length-1].startTime);}).observe({type:"largest-contentful-paint",buffered:true});}catch(e){}
+      try{new PerformanceObserver(function(l){l.getEntries().forEach(function(e){if(!e.hadRecentInput)_v.cls+=e.value;});}).observe({type:"layout-shift",buffered:true});}catch(e){}
+      try{new PerformanceObserver(function(l){l.getEntries().forEach(function(e){if(e.duration>_v.inp)_v.inp=Math.round(e.duration);});}).observe({type:"event",buffered:true,durationThreshold:40});}catch(e){}
+    }
+  }catch(e){}
+  function flushVitals(){
+    if(_v._sent)return;_v._sent=1;
+    try{var nt=performance.getEntriesByType&&performance.getEntriesByType("navigation")[0];if(nt&&nt.loadEventEnd)_v.load=Math.round(nt.loadEventEnd);}catch(e){}
+    var dt=(screen.width&&screen.width<768)?"mobile":"desktop";
+    var payload={page_id:pid,token:tk,url:location.href,session_id:sid,event_type:"vitals",vitals:{lcp:_v.lcp||null,cls:_v.cls?Math.round(_v.cls*1000)/1000:null,inp:_v.inp||null,load_time:_v.load||null,device_type:dt}};
+    try{if(navigator.sendBeacon){navigator.sendBeacon(ep,new Blob([JSON.stringify(payload)],{type:"application/json"}));}else{fetch(ep,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),keepalive:true});}}catch(e){}
+  }
+  addEventListener("visibilitychange",function(){if(document.visibilityState==="hidden")flushVitals();});
+  addEventListener("pagehide",flushVitals);
+})();
+</script>
+<!-- End Page Pulse Tracking Script -->
+    <script src="/assets/js/vendor/glightbox.min.js" defer></script>
+    <script src="/assets/js/blog-lightbox.js" defer></script>
+  </body>
+</html>

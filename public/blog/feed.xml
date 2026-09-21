@@ -6,7 +6,160 @@
     <atom:link href="https://backbonehq.io/blog/feed.xml" rel="self" type="application/rss+xml" />
     <description>Opinionated engineering notes on building production SaaS platforms - from runtime architecture and platform engineering to the realities of running software at scale.</description>
     <language>en</language>
-    <lastBuildDate>Sun, 09 Aug 2026 00:00:00 GMT</lastBuildDate>
+    <lastBuildDate>Mon, 21 Sep 2026 00:00:00 GMT</lastBuildDate>
+    <item>
+      <title>Quarkus + GraalVM Advanced Obfuscation How to open-source your runtime without open-sourcing your IP</title>
+      <link>https://backbonehq.io/blog/quarkus-graalvm-advanced-obfuscation/</link>
+      <guid isPermaLink="true">https://backbonehq.io/blog/quarkus-graalvm-advanced-obfuscation/</guid>
+      <pubDate>Mon, 21 Sep 2026 00:00:00 GMT</pubDate>
+      <description>GraalVM 25 Advanced Obfuscation can turn Quarkus native images into a practical distribution boundary - if you avoid -H:Preserve and use conditional reflection metadata instead. A reproducible walkthrough with CDI, Fault Tolerance, Redis, and Hibernate.</description>
+      <content:encoded><![CDATA[<p>I&#39;ve spent the last 18 months building <a href="https://backbonehq.io/" target="_blank" rel="noopener noreferrer">Backbone</a>, a production platform bootstrap for SaaS startup engineering teams.</p>
+<p>I recently open-sourced the Community edition. Community is meant to be genuinely usable for local development: run the platform services, scaffold product domain services, build against a real runtime. What I <em>didn&#39;t</em> want to do is open source the entire codebase.</p>
+<p>That&#39;s an awkward distribution problem. Java bytecode is a weak boundary. Even without source, a normal JVM artifact still leaves a lot of useful structure behind.</p>
+<p>GraalVM Native Image already helps: you ship machine code, not class files, and closed-world analysis strips unreachable code. GraalVM 25 adds another layer - Advanced Obfuscation (AO) - which replaces meaningful module, package, class, method, field, and source-file names with opaque symbols across application code and third-party dependencies.</p>
+<p>The interesting question was never &quot;does <code>-H:AdvancedObfuscation</code> work on Hello World?&quot;</p>
+<p>It was whether AO would survive a real Quarkus service.</p>
+<p>I couldn&#39;t find a public write-up of anyone getting that working with a CDI-heavy Quarkus stack, so I tried it. The working reproduction is here:</p>
+<p><a href="https://github.com/get-backbone/quarkus-graalvm-ao" target="_blank" rel="noopener noreferrer">github.com/get-backbone/quarkus-graalvm-ao</a></p>
+<h2>The problem</h2>
+<p>Backbone Community needs runnable platform services. Users should be able to start auth, actor, notification, and document locally - not inherit a crippled source-only stub - and build their own domain services against that runtime. When they&#39;re ready to ship, a commercial licence unlocks the rest: full source code access to modify the backing services, CI/CD release pipelines, infrastructure automation, AWS deployments, security, scale, and compliance features.</p>
+<p>But Community isn&#39;t the production platform. Extending core services and deploying to AWS sit behind that licence. The open surface is the local toolchain, domain-service scaffolding, SDK APIs, and the runnable platform images. The proprietary service implementations stay closed.</p>
+<p>So the distribution model I wanted looked like this:</p>
+<pre><code class="language-text">Private service source (IP)
+        │
+        ▼
+Quarkus native build (Oracle GraalVM 25)
+        │
+        ▼
+Advanced Obfuscation
+        │
+        ▼
+Opaque Linux native image
+        │
+        ▼
+Public Community distribution (development-only)
+</code></pre>
+<p>AO is only the binary distribution boundary. Community still needs a signed licence, and the platform adds its own integrity and entitlement checks - so the free tier stays something you develop against, not a way to run production for free.</p>
+<p>AO turns native compilation from &quot;just a deployment format&quot; into a practical <strong>distribution boundary</strong>. Not a security boundary. Not DRM. A skilled attacker with time and the right tools can still reverse-engineer native binaries - but that&#39;s a different bar from unzipping a JAR and reading class files. &quot;Here is a runnable service whose implementation isn&#39;t sitting there as readable Java&quot; is a much more useful open-source story for a commercial platform product than a stripped demo.</p>
+<h2>First attempt: build succeeded, Quarkus died</h2>
+<p>AO is experimental and Oracle-GraalVM-only. Quarkus&#39;s native ecosystem is Mandrel-first, so this isn&#39;t a well-trodden path.</p>
+<p>I pointed a real service at Oracle GraalVM 25 with:</p>
+<pre><code class="language-text">-H:AdvancedObfuscation=export-mapping
+</code></pre>
+<p>The native build completed. Startup then fell over inside SmallRye Fault Tolerance with an NPE. The stack trace was partially obfuscated, which made the evening more educational than it needed to be :/</p>
+<p><code>export-mapping</code> produces a JSON map from original names to obfuscated ones (and lets you deobfuscate stack traces later). That was enough to see what was going on: AO isn&#39;t just cosmetic for anyone poking at the binary with a disassembler. Anything that depends on runtime names - <code>Class#getName()</code>, reflective lookup, CDI bean resolution, FT frames - can change behaviour when those names change.</p>
+<h2><code>-H:Preserve</code> looked right but wasn&#39;t</h2>
+<p><a href="https://docs.oracle.com/en/graalvm/jdk/25/docs/security-guide/native-image/obfuscation/" target="_blank" rel="noopener noreferrer">Oracle&#39;s docs</a> point at <code>-H:Preserve</code> as the carve-out.</p>
+<p>On a Quarkus classpath, Preserve is the wrong tool.</p>
+<p>Preserve is a <strong>reachability</strong> mechanism as well as a rename exclusion. Broad package preservation started dragging optional and otherwise-unreachable types into the image - logging bridges, Kotlin metadata, MicroProfile Metrics, deployment classes, and friends. The build then failed with missing classes. Narrower Preserve lists still pulled optionals in.</p>
+<p>I wanted:</p>
+<blockquote>
+<p>If this type is already reachable, keep its name.</p>
+</blockquote>
+<p>Preserve gave me:</p>
+<blockquote>
+<p>Make this code available even if analysis didn&#39;t find it, <em>and</em> don&#39;t rename it.</p>
+</blockquote>
+<p>For Quarkus, that second behaviour felt like a bit of a sledgehammer.</p>
+<h2>The fix: invert-target reflection metadata</h2>
+<p>GraalVM&#39;s AO rules are clearer once you look for them: classes registered for reflection in reachability metadata aren&#39;t obfuscated. Reflection registration is rename protection. It isn&#39;t, by itself, a force-include of the whole package.</p>
+<p>The pattern that worked was conditional <code>reflect-config.json</code> entries - what I ended up calling invert-target registrations:</p>
+<pre><code class="language-json">{
+  &quot;name&quot;: &quot;io.smallrye.faulttolerance.…&quot;,
+  &quot;condition&quot;: {
+    &quot;typeReachable&quot;: &quot;io.smallrye.faulttolerance.…&quot;
+  }
+}
+</code></pre>
+<p>If the type is reachable, AO leaves the name alone. If it isn&#39;t reachable, the registration is a no-op and doesn&#39;t suddenly pull half of Quarkus into the image.</p>
+<p>That distinction - Preserve vs conditional reflection - was the entire unlock.</p>
+<h2>It didn&#39;t stop at Fault Tolerance</h2>
+<p>Once FT started cleanly, other name-sensitive framework edges showed up.</p>
+<table>
+<thead>
+<tr>
+<th>Symptom</th>
+<th>What fixed it</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>SmallRye FT NPE / mangled FT frames</td>
+<td>FT invert-target generator</td>
+</tr>
+<tr>
+<td><code>NoSuchMethodException</code> on Arjuna <code>*EnvironmentBean</code></td>
+<td>Narrow Arjuna suffix allowlist (blanket <code>com.arjuna.**</code> OOMed / timed out the AO compile)</td>
+</tr>
+<tr>
+<td>CDI <code>No bean found</code> for an obfuscated Vert.x type</td>
+<td>Redis / Mutiny Vert.x invert-target generator</td>
+</tr>
+<tr>
+<td>Micrometer Vert.x binder NPE under AO</td>
+<td><code>quarkus.micrometer.binder.vertx.enabled=false</code></td>
+</tr>
+</tbody></table>
+<p>The Quarkus runtime under test was Quarkus <strong>3.36.1</strong> on Oracle GraalVM <strong>25</strong>, running a production-like stack:</p>
+<ul>
+<li>Quarkus ArC CDI</li>
+<li>SmallRye Fault Tolerance</li>
+<li>Redis cache</li>
+<li>Postgres/Hibernate</li>
+<li>SmallRye Health + Micrometer/Prometheus</li>
+<li><a href="https://github.com/get-backbone/backbone-kit" target="_blank" rel="noopener noreferrer">backbone-kit</a> metrics, logging, throttle components</li>
+</ul>
+<p>I used small generators to rebuild the three reflect carve-outs before each AO build; the Linux/glibc native image comes out of Oracle GraalVM 25 with Advanced Obfuscation enabled.</p>
+<p>Build time is the main cost. An AO native build of a Backbone service took around 20 minutes. Oracle documents AO as typically adding ~20–50% to native-image time, with no runtime performance or memory overhead.</p>
+<h2>What ships</h2>
+<p>Community platform services are distributed as protected native images on GHCR.</p>
+<p>You can pull and run them locally with the <a href="https://github.com/get-backbone/backbone-community" target="_blank" rel="noopener noreferrer">Community edition of Backbone</a>. The proprietary Java source doesn&#39;t come with them.</p>
+<p>The same approach is documented end-to-end in the demo public repo so anyone can reproduce the mechanism, without needing the full Backbone tree:</p>
+<p><a href="https://github.com/get-backbone/quarkus-graalvm-ao" target="_blank" rel="noopener noreferrer">get-backbone/quarkus-graalvm-ao</a></p>
+<pre><code class="language-bash">task compose:up
+task test          # JVM path
+task ao:build      # regenerates reflect-config, then AO native (~15m)
+task ao:image
+task ao:run
+task ao:smoke
+</code></pre>
+<h2>Caveats worth saying out loud</h2>
+<p>AO is experimental and Oracle-GraalVM-only. Behaviour can shift between releases; pin versions and test the obfuscated image.</p>
+<p>AO isn&#39;t encryption, and it doesn&#39;t make reverse engineering impossible. It does turn &quot;read the implementation&quot; into specialist native-binary work - Ghidra/IDA territory, opaque symbols, closed-world stripping - rather than an afternoon with a Java decompiler.</p>
+<p>Keep the mapping file with the build so you can deobfuscate production stack traces. Don&#39;t ship it in the image.</p>
+<p>Watch the SBOM. <a href="https://docs.oracle.com/en/graalvm/jdk/25/docs/security-guide/native-image/obfuscation/" target="_blank" rel="noopener noreferrer">Oracle warns</a> that embedded class-level SBOM data can re-expose original symbol names under AO; export the SBOM or disable embedding when confidentiality matters.</p>
+<p>And one extra Quarkus footgun just for fun: CLI <code>-Dquarkus.native.additional-build-args=…</code> <strong>replaces</strong> the property rather than merging with it. If you also need <code>--initialize-at-run-time=…</code> (I did for <code>jansi</code>), put both flags on the same CLI list, or you&#39;ll silently drop one.</p>
+<h2>What this enables for Backbone</h2>
+<pre><code class="language-text">Community (free, development-only)
+    ├── local Floci / Postgres / Redis backends
+    ├── AO native platform services (auth, actor, notification, document)
+    ├── domain-service scaffolding (auth, throttling, logging, metrics baked in)
+    ├── BFF API + stateless reference UI (Quarkus dev mode)
+    └── open SDK surface + local tooling
+              │
+              │  licence when ready to ship
+              ▼
+         source code + CI/CD + IaC + AWS deploy + enterprise scale, security, compliance concerns
+</code></pre>
+<p>Users get something they can actually run and build against. They don&#39;t get the commercial platform implementation as public Java source just because Community distribution is public.</p>
+<p>That&#39;s a much more valuable open-source boundary for this kind of product than a sales demo or video pitch before upgrading.</p>
+<h2>Takeaway</h2>
+<p>What&#39;s missing from the Oracle Advanced Obfuscation docs is an account of making AO work with a real Quarkus application - including CDI and SmallRye Fault Tolerance - without resorting to <code>-H:Preserve</code> and watching the native build eat optional dependencies.</p>
+<p>The short version:</p>
+<blockquote>
+<p><strong>Don&#39;t preserve Quarkus. Register the few name-sensitive types with conditional reflection metadata, and let AO rename everything else.</strong></p>
+</blockquote>
+<p>Start here if you&#39;re about to spend a day discovering that the hard way:</p>
+<p><strong><a href="https://github.com/get-backbone/quarkus-graalvm-ao" target="_blank" rel="noopener noreferrer">get-backbone/quarkus-graalvm-ao</a></strong></p>
+<p><a href="https://quarkus.io/" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/Quarkus-3.36.1-4695EB?logo=quarkus&logoColor=white" alt="Quarkus"></a></p>
+<p><a href="https://www.graalvm.org/jdk25/security-guide/native-image/obfuscation/" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/GraalVM-25-F2A900?logo=oracle&logoColor=white" alt="GraalVM"></a></p>
+]]></content:encoded>
+      <category>quarkus</category>
+      <category>graalvm</category>
+      <category>native-image</category>
+      <category>obfuscation</category>
+      <category>java</category>
+      <category>open-source</category>
+    </item>
     <item>
       <title>Vibe Coding Is Reckless. Defined Architecture Patterns Fix It.</title>
       <link>https://backbonehq.io/blog/vibe-coding-is-reckless-defined-architecture-patterns-fix-it/</link>
