@@ -117,6 +117,7 @@ function loadArticles() {
     const rawTitle = String(data.title || slug);
     const title = rawTitle.replace(/\s*\n\s*/g, " ").trim();
     const titleHtml = escapeHtml(rawTitle).replace(/\n/g, "<br>");
+    const subtitle = data.subtitle ? String(data.subtitle).trim() : "";
     const published = toISODate(data.published);
     const updated = data.updated ? toISODate(data.updated) : published;
     const words = content.trim().split(/\s+/).filter(Boolean).length;
@@ -126,6 +127,7 @@ function loadArticles() {
       slug,
       title,
       titleHtml,
+      subtitle,
       summary: String(data.summary || ""),
       description: String(data.description || data.summary || ""),
       published,
@@ -277,6 +279,11 @@ ${related
             ${article.readingTime} min read
           </div>
           ${tagsHtml}
+          ${
+            article.subtitle
+              ? `<h2 class="blog-subtitle">${escapeHtml(article.subtitle)}</h2>`
+              : ""
+          }
           <hr class="blog-rule" aria-hidden="true" />
           <div class="blog-prose">
 ${article.html}

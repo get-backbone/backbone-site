@@ -43,6 +43,22 @@
   color: #c9d3ee;
 }
 
+.blog-subtitle {
+  margin-top: 1.25rem;
+  margin-bottom: 0;
+  font-family: "HelveticaNowDisplay", system-ui, sans-serif;
+  color: #c9d3ee;
+  font-weight: 600;
+  font-size: 1.125rem;
+  line-height: 140%;
+  text-wrap: pretty;
+}
+@media (min-width: 768px) {
+  .blog-subtitle {
+    font-size: 1.25rem;
+  }
+}
+
 /* ---------- tags ---------- */
 .blog-tags {
   display: flex;

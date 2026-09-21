@@ -1,5 +1,6 @@
 ---
-title: "Quarkus + GraalVM Advanced Obfuscation\nHow to open-source your runtime without open-sourcing your IP"
+title: "Quarkus + GraalVM Advanced Obfuscation"
+subtitle: "How to open-source your runtime without open-sourcing your IP"
 slug: quarkus-graalvm-advanced-obfuscation
 summary: "GraalVM 25 Advanced Obfuscation can turn Quarkus native images into a practical distribution boundary - if you avoid -H:Preserve and use conditional reflection metadata instead. A reproducible walkthrough with CDI, Fault Tolerance, Redis, and Hibernate."
 description: "How I made Oracle GraalVM 25 Advanced Obfuscation work with a real Quarkus service: why -H:Preserve breaks Quarkus native builds, how invert-target reflect-config keeps SmallRye Fault Tolerance / Arjuna / Vert.x names without force-including the classpath, and what that enables for distributing opaque Community runtimes."

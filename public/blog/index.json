@@ -1,6 +1,6 @@
 [
   {
-    "title": "Quarkus + GraalVM Advanced Obfuscation How to open-source your runtime without open-sourcing your IP",
+    "title": "Quarkus + GraalVM Advanced Obfuscation",
     "slug": "quarkus-graalvm-advanced-obfuscation",
     "url": "/blog/quarkus-graalvm-advanced-obfuscation/",
     "summary": "GraalVM 25 Advanced Obfuscation can turn Quarkus native images into a practical distribution boundary - if you avoid -H:Preserve and use conditional reflection metadata instead. A reproducible walkthrough with CDI, Fault Tolerance, Redis, and Hibernate.",
